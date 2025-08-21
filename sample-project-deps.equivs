@@ -1,0 +1,27 @@
+# -*- debian-control -*-
+
+# Sample dependency file. Installs tools for native-building OSs, but not for
+# cross-building ones. Installs libraries for the appropriate architecture.
+
+# See the comment in substitute-deps-file.pl about the meaning and intent of the
+# <<<...>>> tags
+
+Source: <<<eval $DEPS_PACKAGE_NAME>>>
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+
+Package: <<<eval $DEPS_PACKAGE_NAME>>>
+Version: 0.01
+Maintainer: Dima Kogan <dima@secretsauce.net>
+Depends:
+         build-essential<<<if !$ARCH_TARGET>>>,
+         crossbuild-essential-<<<eval $ARCH_TARGET>>><<<if $ARCH_TARGET>>>,
+         mrcal<<<if !$ARCH_TARGET>>>,
+         libmrcal-dev<<<eval $ARCH_TARGET_SPEC>>>,
+         gdb<<<if $ARCH_TARGET_SPEC>>>,
+         devscripts<<<if !$ARCH_TARGET>>>,
+         python3
+
+Architecture: <<<eval $ARCH_HOST>>>
+Description: Build-time and run-time dependencies for the sample project
