@@ -203,6 +203,9 @@ $(foreach f,$(FLAVORS),$(eval $(call rules_build_tarballs,$f)))
 
 TARBALLS_ALL := $(foreach f,$(FLAVORS),$(PROJECT)-$f_$(VERSION)_$(ARCH_HOST_$f).tar.gz)
 
+tarballs: $(TARBALLS_ALL)
+.PHONY: tarballs
+
 ifneq ($(PUSH_TARBALLS_PATH),)
 push-tarballs: $(TARBALLS_ALL)
 	rsync -av $^ $(PUSH_TARBALLS_PATH)
