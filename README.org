@@ -1,0 +1,271 @@
+* Overview
+
+Build dependency meta-packages and OS tarballs that use those packages
+
+* Synopsis
+
+#+begin_example
+$ FLAVORS='native cross-arm64 robot-arm64'                                \
+  DEBIAN_RELEASE=trixie                                                   \
+  PROJECT=sample-project                                                  \
+  APT_REPOS_EXTRA=https://fatty.secretsauce.net/debian/sample-project/    \
+  DPUT_TARGET=sample-project-fatty-trixie                                 \
+  APTOPT='Acquire::https::fatty.secretsauce.net::Verify-Peer=false'       \
+  make deps                                                               \
+#+end_example
+
+We built the 3 dependency meta-packages for the 3 flavors we asked for: a
+native-amd64 one, a native-arm64 one and a cross-building amd64-arm64 one. The
+dependent packages are defined in the [[file:sample-project-deps.equivs][=sample-project-deps.equivs= file]]. The
+relevant data in each meta-package
+
+#+begin_example
+$ dpkg -I sample-project-deps-native_0.01_amd64.deb
+  Package: sample-project-deps-native
+  Architecture: amd64
+  Depends: build-essential, mrcal, libmrcal-dev, devscripts, python3
+  ...
+
+$ dpkg -I sample-project-deps-cross-arm64_0.01_amd64.deb
+  Package: sample-project-deps-cross-arm64
+  Architecture: amd64
+  Depends: crossbuild-essential-arm64, libmrcal-dev:arm64, gdb, python3
+  ...
+
+$ dpkg -I sample-project-deps-robot-arm64_0.01_arm64.deb
+  Package: sample-project-deps-robot-arm64
+  Architecture: arm64
+  Depends: build-essential, mrcal, libmrcal-dev, devscripts, python3
+  ...
+#+end_example
+
+I push those meta-packages to the local APT repository that everybody uses to
+get custom packages for this project:
+
+#+begin_example
+$ FLAVORS='native cross-arm64 robot-arm64'                                \
+  DEBIAN_RELEASE=trixie                                                   \
+  PROJECT=sample-project                                                  \
+  APT_REPOS_EXTRA=https://fatty.secretsauce.net/debian/sample-project/    \
+  DPUT_TARGET=sample-project-fatty-trixie                                 \
+  APTOPT='Acquire::https::fatty.secretsauce.net::Verify-Peer=false'       \
+  make push-deps
+#+end_example
+
+In addition to pushing to the APT server, this makes a git tag, and pushes that.
+Any machines already set up using these packages can now move to the latest ones
+with the usual
+
+#+begin_src sh
+apt upgrade && apt update
+#+end_src
+
+But to make it easier to set up brand-new machines, we can also make OS tarballs
+that can be extracted and used directly. This is usually done in a chroot
+managed by =schroot=, but any similar tooling can work.
+
+#+begin_example
+$ FLAVORS='native cross-arm64 robot-arm64'                                \
+  DEBIAN_RELEASE=trixie                                                   \
+  PROJECT=sample-project                                                  \
+  APT_REPOS_EXTRA=https://fatty.secretsauce.net/debian/sample-project/    \
+  DPUT_TARGET=sample-project-fatty-trixie                                 \
+  APTOPT='Acquire::https::fatty.secretsauce.net::Verify-Peer=false'       \
+  make tarballs
+#+end_example
+
+We can also select specific tarballs instead of /all/ of them with something
+like
+
+#+begin_src sh
+.... make tarballs-native
+#+end_src
+
+As usual, the available targets can be listeed with
+
+#+begin_src sh
+.... remake --list-targets
+#+end_src
+
+* Description
+
+This toolkit solves a common problem faced by big-ish software projects: how to
+manage the software configuration on /all/ the computers. There are many efforts
+to do this. The scenario targeted by /this/ project:
+
+- Different people might be using machines with different architectures. I
+  routinely encounter groups with mixed amd64/arm64 boxes used for development,
+  and everyone should be supported, while making sure that the versions of the
+  libraries /everybody/ is using are identical
+
+- Different machines might have different specific purposes. I routinely
+  encounter projects that build software for a target machine (a robot) equipped
+  with a slower arm64 processor, while everybody's workstations use much faster
+  CPUs and a mix of architectures. The robot doesn't need to have all the
+  development tooling. But the libraries it does have /must/ be exactly those on
+  the dev machines
+
+- The versions of everything must match, so if a test passes on somebody's dev
+  machine, we should have a reasonable expectation that it will work on the
+  robot.
+
+- Cross-building must work: building for the robot should be trivial, even if
+  the dev machine is using a different architecture
+
+- Setting everything up and managing things and updating things must be trivial.
+  A page-long human script that pulls stuff from Debian and pip and conda and
+  some sources from git, which it then makes available with =sudo make install=
+  isn't acceptable.
+
+The approach we take leans heavily on Debian:
+
+- Everybody agrees on a base OS. The latest release of Debian (trixie at the
+  time of this writing) is /strongly/ recommended. This supports /lots/ of
+  architecture and has /lots/ of libraries and tools available to do almost
+  anything
+
+- People running a different Linux distro can install the common OS into a
+  subdirectory on disk and =chroot= into it. =schroot= strongly recommended to
+  do this
+
+- /All/ dependencies come from packages. Anything that isn't available in stock
+  Debian is packaged and pushed to a local APT server
+
+- /All/ dependencies required for a particular task are made available in a
+  metapackage. So a fresh install of the OS + this metapackage produces a system
+  that can do everything required for this project. Different tasks might
+  require different meta-packages; in the example above we build 3 flavors:
+
+  - =sample-project-deps-native= for a native amd64 dev machine
+  - =sample-project-deps-cross-arm64= for a machine meant to cross build
+    amd64->arm64
+  - =sample-project-deps-robot-arm64= for a native arm64 machine meant for
+    deployment (not development)
+
+The tooling in this package is accessed through the [[file:Makefile][=Makefile=]]. You can =make
+deps= to build the meta-packages, =make push-deps= to push them to the APT
+server and =make tarballs= to build OS tarballs with the meta-package
+preinstalled (see the sample invocation above).
+
+Metapackage definitions are defined in a file filtered by the =Makefile= and
+then processed by the =equivs= tool to create the package. The OS tarballs are
+made with =mmdebstrap=.
+
+New installs can be done by installing a fresh OS and then installing the
+metapackage. /Or/ the pre-cannedtarball can be extracted into a fresh directory.
+
+Already-installed boxes can be updated with the usual =apt update && apt
+upgrade=.
+
+* User-facing documentation
+** Installing the system
+*** On an existing install of the common distro
+If you're already running the common Linux distribution, there's no need for any
+child OS, and the metapackage can be used directly.
+
+You should add the custom project-specific APT repository to your
+=/etc/apt/sources.list=; something like:
+
+#+begin_example
+deb [trusted=yes] https://fatty.secretsauce.net/debian/sample-project/ trixie main
+#+end_example
+
+Then
+
+#+begin_src sh
+sudo apt update && \
+sudo apt install sample-project-deps-native
+#+end_src
+
+That's it. If cross-building, a bit more setup is needed and the
+cross-building-specific metapackage is needed. Something like this:
+
+
+#+begin_src sh
+dpkg --add-architecture arm64
+
+sudo apt update && \
+sudo apt install sample-project-deps-cross-arm64
+#+end_src
+
+Note that a number of Debian packages still aren't co-installable with multiple
+architectures at the same time. So for cross-building, it might still be
+required to make a child OS, as noted in the following section
+
+*** Setting up schroot
+If you're running a different Linux distro, the =schroot= tool is recommended as
+a shell to use libraries from a child OS. Assuming a Debian-style host OS:
+
+#+begin_src sh
+sudo apt install schroot
+#+end_src
+
+Then drop something like this into =/etc/schroot/chroot.d/sample-project=:
+
+#+begin_src sh
+[sample]
+description=Debian/trixie
+users=USERNAME
+root-users=USERNAME
+groups=sbuild
+root-groups=root
+type=directory
+directory=DIRECTORY
+shell=/bin/bash
+preserve-environment=yes
+profile=desktop
+#+end_src
+
+adjusting the =USERNAME= and =DIRECTORY= to your username and the directory
+where the common OS will be installed respectively. The OS can be "installed" by
+extracting the convenience tarballs created by this toolkit:
+
+#+begin_src sh
+cd DIRECTORY
+tar xvfz /tmp/sample-project-native_0.01_amd64.tar.gz
+#+end_src
+
+Depending on various uninteresting things, this may produce benign, ignorable
+warnings about =mknod= or =/dev=.
+
+That's it. The chroot is now installed and ready to use. All dependencies
+required to build and run stuff are available.
+
+*** On a non-Linux OS
+Some people like using non-linux OSs with some sort of virtualization layer to
+get a Linux machine. In this case it is strongly recommended to skip the
+schroot, and to install the common distribution directly into the virtual
+environment, and then set stuff up using the above notes.
+
+** Using the installed system
+*** Where should I put my code when working inside the chroot?
+This came up several times. The chroot provides its own system paths (=/usr=,
+=/lib=, =/run=, ....) but your own stuff is shared. In particular, =$HOME= is
+the same inside and outside the chroot, and the data can be organized in
+whatever way you like.
+
+*** How do I do anything in the chroot?
+You do everything exactly how you would normally, except you drop into the
+chroot prior to running the command. So you do one of
+
+- run =schroot -c sample= to get an interactive shell, and then run commands
+  inside
+- Prefix your commands with =schroot -c sample --=. So if you want to run =cmd a
+  b c=, say =schroot -c sample -- cmd a b c=
+
+*** Updating the chroot
+#+begin_src sh
+sudo schroot -c bookworm -- 'apt update && apt upgrade'
+#+end_src
+
+*** Deleting the chroot
+WARNING: Your =/home= directory is bind mounted within the chroot, so all of the
+same files and repos are accessible. This also means it can be dangerous to
+delete the chroot directory, DIRECTORY before unmounting. Here are some tips:
+
+- As long as there are no active schroot sessions, there should be no bind
+  mounts.
+- You can delete all active sessions: =schroot --all-sessions --end-session=
+- To be extra paranoid, running =mount | grep sample= should return nothing
+- To be extra extra paranoid, running =ls DIRECTORY/bookworm/home= should return
+  nothing
