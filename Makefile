@@ -120,7 +120,8 @@ VERSION      := $(shell < $(EQUIVS_FILE) awk '/^Version:/ {print $$2; exit}' )
 
 define rules_build_deps
 $$(DEPS)-$1.substituted.equivs: $$(EQUIVS_FILE)
-	< $$< ./substitute-deps-file.pl DEPS_PACKAGE_NAME=$(DEPS)-$1 \
+	< $$< $(dir $(realpath $(lastword $(MAKEFILE_LIST))))/substitute-deps-file.pl \
+                                        DEPS_PACKAGE_NAME=$(DEPS)-$1 \
                                         ARCH_HOST=$${ARCH_HOST_$1} \
                                         ARCH_TARGET=$${ARCH_TARGET_$1} \
                                         ARCH_TARGET_SPEC=$$(if $${ARCH_TARGET_$1},:$${ARCH_TARGET_$1}) \
