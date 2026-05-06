@@ -4,6 +4,14 @@ Build dependency meta-packages and OS tarballs that use those packages
 
 * Synopsis
 
+Install dependencies:
+
+#+begin_src sh
+sudo apt install qemu-user-binfmt equivs mmdebstrap dpkg-dev
+#+end_src
+
+Build metapackages:
+
 #+begin_example
 $ FLAVORS='native cross-arm64 robot-arm64'                                \
   DEBIAN_RELEASE=trixie                                                   \
