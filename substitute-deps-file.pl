@@ -55,7 +55,7 @@ no warnings 'once';
 no strict 'refs';
 no strict 'vars';
 
-# parse all the a=5 b=7 strings on the commandline. I read these arguments into
+# parse all the key=value strings on the commandline. I read these arguments into
 # local perl variables
 for my $kv (@ARGV)
 {
