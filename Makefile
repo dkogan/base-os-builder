@@ -183,7 +183,7 @@ $(if $(ARCH_TARGET_$1),						\
   --architectures=$(ARCH_HOST_$1))
 endef
 
-APT_REPOS := http://deb.debian.org/debian
+APT_REPOS := http://deb.debian.org/debian http://security.debian.org/debian-security
 
 define rules_build_tarballs
 $$(PROJECT)-$1_$$(VERSION)_$$(ARCH_HOST_$1).tar.gz: $$(DEPS)-$1_$$(VERSION)_$$(ARCH_HOST_$1).deb
@@ -193,7 +193,7 @@ $$(PROJECT)-$1_$$(VERSION)_$$(ARCH_HOST_$1).tar.gz: $$(DEPS)-$1_$$(VERSION)_$$(A
 	  $$(foreach o,$$(APTOPT),--aptopt $$o)	\
 	  $$(DEBIAN_RELEASE)			\
 	  _$$@                                  \
-	  $$(foreach r,$$(APT_REPOS), $$(foreach k,deb deb-src, "$$k $$r $$(DEBIAN_RELEASE) main contrib non-free non-free-firmware")) \
+	  $$(foreach r,$$(APT_REPOS), $$(foreach k,deb deb-src, "$$k $$r $$(DEBIAN_RELEASE)$$(if $$(filter %/debian-security,$$r),-security) main contrib non-free non-free-firmware")) \
 	  $$(foreach r,$$(APT_REPOS_EXTRA), $$(foreach k,deb deb-src, "$$k [trusted=yes] $$r $$(DEBIAN_RELEASE) main")) && \
 	mv _$$@ $$@
 tarball-$1: $$(PROJECT)-$1_$$(VERSION)_$$(ARCH_HOST_$1).tar.gz
