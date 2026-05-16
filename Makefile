@@ -194,7 +194,7 @@ $$(PROJECT)-$1_$$(VERSION)_$$(ARCH_HOST_$1).tar.gz: $$(DEPS)-$1_$$(VERSION)_$$(A
 	  $$(DEBIAN_RELEASE)			\
 	  _$$@                                  \
 	  $$(foreach r,$$(APT_REPOS), $$(foreach k,deb deb-src, "$$k $$r $$(DEBIAN_RELEASE) main contrib non-free non-free-firmware")) \
-	  $$(foreach r,$$(APT_REPOS_EXTRA), $$(foreach k,deb deb-src, "$$k [trusted=yes] $$r $$(DEBIAN_RELEASE) main contrib non-free non-free-firmware")) && \
+	  $$(foreach r,$$(APT_REPOS_EXTRA), $$(foreach k,deb deb-src, "$$k [trusted=yes] $$r $$(DEBIAN_RELEASE) main")) && \
 	mv _$$@ $$@
 tarball-$1: $$(PROJECT)-$1_$$(VERSION)_$$(ARCH_HOST_$1).tar.gz
 .PHONY: tarball-$1
