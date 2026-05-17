@@ -358,7 +358,7 @@ if ((DO_TARBALLS)) {
             INCLUDE_DEP_ARGS=(--include ${PROJECT}-deps-${flavor})
         }
 
-        TARBALL_FILE=${PROJECT}-$flavor_${VERSION}_$(ARCH_NATIVE $flavor).tar.gz
+        TARBALL_FILE=${PROJECT}-${flavor}_${VERSION}_$(ARCH_NATIVE $flavor).tar.gz
 
         # Needed to split the arguments on newlines and not words. This allows
         # arguments with whitespace in it, as is necessary with "deb" lines
