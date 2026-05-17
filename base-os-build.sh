@@ -107,12 +107,12 @@ unset TEMP
 while {true} {
     case "$1" in
         '--deps')
-            do_deps=1
+            DO_DEPS=1
             shift
             continue
         ;;
         '--tarballs')
-            do_tarballs=1
+            DO_TARBALLS=1
             shift
             continue
         ;;
@@ -174,7 +174,7 @@ if ((DO_DEPS + DO_TARBALLS == 0)) {
        exit 1
 }
 
-if [[ -z "$FLAVORS" ]]{
+if [[ -z "$FLAVORS" ]] {
        echo "--flavors is required" > /dev/stderr
        echo '' > /dev/stderr
        echo $usage > /dev/stderr
@@ -183,7 +183,7 @@ if [[ -z "$FLAVORS" ]]{
 
 
 if ((DO_TARBALLS)) {
-    if [[ -z "$DEBIAN_RELEASE" ]]{
+    if [[ -z "$DEBIAN_RELEASE" ]] {
            echo "--release is required if --tarballs is given" > /dev/stderr
            echo '' > /dev/stderr
            echo $usage > /dev/stderr
@@ -281,14 +281,14 @@ function ARCH_TARGET_SPEC {
 function MMDEBSTRAP_FLAGS {
     flavor=$1
     if {IS_CROSS $flavor} {
-        echo --                                                         \
+        echo                                                            \
           --architectures=$(ARCH_HOST $flavor),$(ARCH_TARGET $flavor)   \
           --include ca-certificates                                     \
           --include crossbuild-essential-$(ARCH_TARGET_$flavor)         \
           --include binfmt-support                                      \
           --include qemu-user-static
     } else {
-        echo --                                 \
+        echo                                    \
           --architectures=$(ARCH_HOST $flavor)  \
           --include ca-certificates
     }
@@ -303,25 +303,25 @@ function APT_REPOS {
         [[ $r == */debian-security ]] && RELEASE_SUFFIX="-security"
 
         for k (deb deb-src) {
-            echo "\"$k $r ${DEBIAN_RELEASE}${RELEASE_SUFFIX} main contrib non-free non-free-firmware\""
+            echo "$k $r ${DEBIAN_RELEASE}${RELEASE_SUFFIX} main contrib non-free non-free-firmware"
         }
     }
 
     for r (${APT_REPOS_EXTRA}) {
         for k (deb deb-src) {
-            echo "\"$k [trusted=yes] $r $(DEBIAN_RELEASE) main\""
+            echo "$k [trusted=yes] $r ${DEBIAN_RELEASE} main"
         }
     }
 }
 
 
-if ((DO_DEPS))
+if ((DO_DEPS)) {
     for flavor ($FLAVORS) {
 
         EQUIVS_FILE_SUBSTITUTED=/tmp/${EQUIVS_FILE:t:r}-$flavor.substituted.${EQUIVS_FILE:t:e}
 
         < $EQUIVS_FILE \
-        ${0:A:h}/substitute-deps-file.py \
+        ${0:A:h}/substitute-deps-file.pl \
             DEPS_PACKAGE_NAME=${PROJECT}-deps-${flavor} \
             ARCH_HOST=$(ARCH_HOST $flavor) \
             ARCH_TARGET=$(ARCH_TARGET $flavor) \
@@ -337,6 +337,7 @@ if ((DO_DEPS))
 
 
 if ((DO_TARBALLS)) {
+
     # --aptopt opt1 --aptopt opt2 ...
     APTOPTS=("--aptopt "${^APTOPTS})
     APTOPTS=(${=APTOPTS})
@@ -347,22 +348,36 @@ if ((DO_TARBALLS)) {
 
         if ((DO_DEPS)) {     
             # --deps. We specify the package file on disk that we just built
-            INCLUDE_DEP=${PROJECT}-deps-${flavor}_${VERSION}_$(ARCH_HOST $flavor).deb
+            # We must specify this as a path (absolute or relative)
+            # AND we must tell mmdebstrap to bind-mount the directory to make
+            # this file finable inside the chroot
+            INCLUDE_DEP=(--include ${PROJECT}-deps-${flavor}_${VERSION}_$(ARCH_HOST $flavor).deb(:A)
+                         --hook-dir=/usr/share/mmdebstrap/hooks/file-mirror-automount)
         } else {
             # No --deps. We specify the package name
-            INCLUDE_DEP=${PROJECT}-deps-${flavor}
+            INCLUDE_DEP_ARGS=(--include ${PROJECT}-deps-${flavor})
         }
 
         TARBALL_FILE=${PROJECT}-$flavor_${VERSION}_$(ARCH_HOST $flavor).tar.gz
-        mmdebstrap                              \
-          $(MMDEBSTRAP_FLAGS $flavor)           \
-          --include ${INCLUDE_DEP}              \
-          ${=INCLUDE:+--include $INCLUDE}       \
-          $APTOPTS                              \
-          $DEBIAN_RELEASE                       \
-          _$TARBALL_FILE                        \
-          $(APT_REPOS) &&                       \
-        mv _$@ $@
 
+        # Needed to split the arguments on newlines and not words. This allows
+        # arguments with whitespace in it, as is necessary with "deb" lines
+        APT_REPOS_ARGS=("${(@f)$(APT_REPOS)}")
+
+        cmd=(mmdebstrap                         \
+             ${INCLUDE_DEP_ARGS}                \
+             ${=INCLUDE:+--include $INCLUDE}    \
+             $(MMDEBSTRAP_FLAGS $flavor)        \
+             $APTOPTS                           \
+             $DEBIAN_RELEASE                    \
+             _$TARBALL_FILE                     \
+             ${APT_REPOS_ARGS})
+
+        if { $cmd } {
+            mv _$TARBALL_FILE $TARBALL_FILE
+        } else {
+            echo "ERROR: mmdebstrap failed:\n$cmd" > /dev/stderr
+            exit 1
+        }
     }
 }
