@@ -13,19 +13,19 @@ sudo apt install qemu-user-binfmt equivs mmdebstrap dpkg-dev
 Build metapackages:
 
 #+begin_example
-$ FLAVORS='native cross-arm64 robot-arm64'                                \
-  DEBIAN_RELEASE=trixie                                                   \
-  PROJECT=sample-project                                                  \
-  APT_REPOS_EXTRA=https://fatty.secretsauce.net/debian/sample-project/    \
-  DPUT_TARGET=sample-project-fatty-trixie                                 \
-  APTOPT='Acquire::https::fatty.secretsauce.net::Verify-Peer=false'       \
-  make deps                                                               \
+$ ./base-os-build.sh                                                    \
+    --flavors 'native cross-arm64 robot-arm64'                          \
+    --release trixie                                                    \
+    --aptrepos https://fatty.secretsauce.net/debian/sample-project/     \
+    --aptopt 'Acquire::https::fatty.secretsauce.net::Verify-Peer=false' \
+    --deps                                                              \
+    sample-project.equivs
 #+end_example
 
 We built the 3 dependency meta-packages for the 3 flavors we asked for: a
 native-amd64 one, a native-arm64 one and a cross-building amd64-arm64 one. The
-dependent packages are defined in the [[file:sample-project-deps.equivs][=sample-project-deps.equivs= file]]. The
-relevant data in each meta-package
+dependent packages are defined in the [[file:sample-project.equivs][=sample-project.equivs= file]]. The relevant
+data in each meta-package
 
 #+begin_example
 $ dpkg -I sample-project-deps-native_0.01_amd64.deb
@@ -40,27 +40,20 @@ $ dpkg -I sample-project-deps-cross-arm64_0.01_amd64.deb
   Depends: crossbuild-essential-arm64, libmrcal-dev:arm64, gdb, python3
   ...
 
-$ dpkg -I sample-project-deps-robot-arm64_0.01_arm64.deb
+$ dpkg -I sample-project-deps-robot-arm64_0.01_amd64.deb
   Package: sample-project-deps-robot-arm64
   Architecture: arm64
   Depends: build-essential, mrcal, libmrcal-dev, devscripts, python3
   ...
 #+end_example
 
-I push those meta-packages to the local APT repository that everybody uses to
-get custom packages for this project:
+I push those meta-packages to the local APT repository (configured in
+=/etc/dput.cf=) that everybody uses to get custom packages for this project:
 
 #+begin_example
-$ FLAVORS='native cross-arm64 robot-arm64'                                \
-  DEBIAN_RELEASE=trixie                                                   \
-  PROJECT=sample-project                                                  \
-  APT_REPOS_EXTRA=https://fatty.secretsauce.net/debian/sample-project/    \
-  DPUT_TARGET=sample-project-fatty-trixie                                 \
-  APTOPT='Acquire::https::fatty.secretsauce.net::Verify-Peer=false'       \
-  make push-deps
+$ dput sample-project-repo *.changes
 #+end_example
 
-In addition to pushing to the APT server, this makes a git tag, and pushes that.
 Any machines already set up using these packages can now move to the latest ones
 with the usual
 
@@ -73,27 +66,16 @@ that can be extracted and used directly. This is usually done in a chroot
 managed by =schroot=, but any similar tooling can work.
 
 #+begin_example
-$ FLAVORS='native cross-arm64 robot-arm64'                                \
-  DEBIAN_RELEASE=trixie                                                   \
-  PROJECT=sample-project                                                  \
-  APT_REPOS_EXTRA=https://fatty.secretsauce.net/debian/sample-project/    \
-  DPUT_TARGET=sample-project-fatty-trixie                                 \
-  APTOPT='Acquire::https::fatty.secretsauce.net::Verify-Peer=false'       \
-  make tarballs
+$ ./base-os-build.sh                                                    \
+    --flavors 'native cross-arm64 robot-arm64'                          \
+    --release trixie                                                    \
+    --aptrepos https://fatty.secretsauce.net/debian/sample-project/     \
+    --aptopt 'Acquire::https::fatty.secretsauce.net::Verify-Peer=false' \
+    --deps --tarballs                                                   \
+    sample-project.equivs
 #+end_example
 
-We can also select specific tarballs instead of /all/ of them with something
-like
-
-#+begin_src sh
-.... make tarballs-native
-#+end_src
-
-As usual, the available targets can be listeed with
-
-#+begin_src sh
-.... remake --list-targets
-#+end_src
+We will build only those tarballs in =--flavors=.
 
 * Description
 
@@ -150,14 +132,17 @@ The approach we take leans heavily on Debian:
   - =sample-project-deps-robot-arm64= for a native arm64 machine meant for
     deployment (not development)
 
-The tooling in this package is accessed through the [[file:Makefile][=Makefile=]]. You can =make
-deps= to build the meta-packages, =make push-deps= to push them to the APT
-server and =make tarballs= to build OS tarballs with the meta-package
-preinstalled (see the sample invocation above).
+The tooling in this package is accessed through [[file:base-os-build.sh][=base-os-build.sh=]]. You can
+=./base-os-build.sh --deps ...= to build the meta-packages, push them to the APT
+server and =./base-os-build.sh --tarballs ...= to build OS tarballs with the
+meta-package preinstalled (see the sample invocation above). If both =--deps
+--tarballs= are given, we will build the metapackage and then use the local
+metapackage file for the tarball; this allows running without a custom APT
+server at all.
 
-Metapackage definitions are defined in a file filtered by the =Makefile= and
-then processed by the =equivs= tool to create the package. The OS tarballs are
-made with =mmdebstrap=.
+Metapackage definitions are defined in a file filtered by the =base-os-build.sh=
+and then processed by the =equivs= tool to create the package. The OS tarballs
+are made with =mmdebstrap=.
 
 New installs can be done by installing a fresh OS and then installing the
 metapackage. /Or/ the pre-cannedtarball can be extracted into a fresh directory.
