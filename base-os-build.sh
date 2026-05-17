@@ -239,7 +239,7 @@ function ARCH {
     }
     # The last token wasn't a known architecture. Return nothing
 }
-function ARCH_HOST {
+function ARCH_NATIVE {
     flavor=$1
     if {IS_CROSS $flavor} {
         arch=$(ARCH $flavor)
@@ -282,14 +282,14 @@ function MMDEBSTRAP_FLAGS {
     flavor=$1
     if {IS_CROSS $flavor} {
         echo                                                            \
-          --architectures=$(ARCH_HOST $flavor),$(ARCH_TARGET $flavor)   \
+          --architectures=$(ARCH_NATIVE $flavor),$(ARCH_TARGET $flavor)   \
           --include ca-certificates                                     \
           --include crossbuild-essential-$(ARCH_TARGET_$flavor)         \
           --include binfmt-support                                      \
           --include qemu-user-static
     } else {
         echo                                    \
-          --architectures=$(ARCH_HOST $flavor)  \
+          --architectures=$(ARCH_NATIVE $flavor)  \
           --include ca-certificates
     }
 }
@@ -323,14 +323,14 @@ if ((DO_DEPS)) {
         < $EQUIVS_FILE \
         ${0:A:h}/substitute-deps-file.pl \
             DEPS_PACKAGE_NAME=${PROJECT}-deps-${flavor} \
-            ARCH_HOST=$(ARCH_HOST $flavor) \
+            ARCH_NATIVE=$(ARCH_NATIVE $flavor) \
             ARCH_TARGET=$(ARCH_TARGET $flavor) \
             ARCH_TARGET_SPEC=$(ARCH_TARGET_SPEC $flavor) \
             FLAVOR=$flavor \
         > $EQUIVS_FILE_SUBSTITUTED
 
         equivs-build \
-           -a $(ARCH_HOST $flavor) \
+           -a $(ARCH_NATIVE $flavor) \
            $EQUIVS_FILE_SUBSTITUTED
     }
 }
@@ -351,14 +351,14 @@ if ((DO_TARBALLS)) {
             # We must specify this as a path (absolute or relative)
             # AND we must tell mmdebstrap to bind-mount the directory to make
             # this file finable inside the chroot
-            INCLUDE_DEP=(--include ${PROJECT}-deps-${flavor}_${VERSION}_$(ARCH_HOST $flavor).deb(:A)
+            INCLUDE_DEP=(--include ${PROJECT}-deps-${flavor}_${VERSION}_$(ARCH_NATIVE $flavor).deb(:A)
                          --hook-dir=/usr/share/mmdebstrap/hooks/file-mirror-automount)
         } else {
             # No --deps. We specify the package name
             INCLUDE_DEP_ARGS=(--include ${PROJECT}-deps-${flavor})
         }
 
-        TARBALL_FILE=${PROJECT}-$flavor_${VERSION}_$(ARCH_HOST $flavor).tar.gz
+        TARBALL_FILE=${PROJECT}-$flavor_${VERSION}_$(ARCH_NATIVE $flavor).tar.gz
 
         # Needed to split the arguments on newlines and not words. This allows
         # arguments with whitespace in it, as is necessary with "deb" lines

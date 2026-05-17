@@ -26,7 +26,7 @@
 #
 #   The name of dependency package being built
 #
-# - $ARCH_HOST
+# - $ARCH_NATIVE
 #
 #   The architecture of the dependency package I'm creating
 #

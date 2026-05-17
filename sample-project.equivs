@@ -23,5 +23,5 @@ Depends:
          devscripts<<<if !$ARCH_TARGET>>>,
          python3
 
-Architecture: <<<eval $ARCH_HOST>>>
+Architecture: <<<eval $ARCH_NATIVE>>>
 Description: Build-time and run-time dependencies for the sample project
