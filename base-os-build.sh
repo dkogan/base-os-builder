@@ -241,8 +241,8 @@ function ARCH {
 }
 function ARCH_NATIVE {
     flavor=$1
+    arch=$(ARCH $flavor)
     if {IS_CROSS $flavor} {
-        arch=$(ARCH $flavor)
 
         if { [[ -n "$arch" ]] } {
             dpkg-architecture -q DEB_BUILD_ARCH
