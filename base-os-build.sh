@@ -1,24 +1,24 @@
 #!/bin/zsh
 
 read -r -d '' usage <<EOF || true
-Usage: $0                                               \
-         [--deps] [--tarballs]                          \
-         --flavors   'FLAVOR1 FLAVOR2 FLAVOR3 ...'      \
-         [--release  DEBIAN_RELEASE]                    \
-         [--aptopts  'APTOPT1 APTOPT2 APTOPT3 ...']     \
-         [--aptrepos 'APTREPO1 APTREPO2 APTREPO3 ...']  \
-         [--include  DEB_GLOB0,DEB_GLOB1 ...]           \
+Usage: $0                                               \\
+         [--deps] [--tarballs]                          \\
+         --flavors   'FLAVOR1 FLAVOR2 FLAVOR3 ...'      \\
+         [--release  DEBIAN_RELEASE]                    \\
+         [--aptopts  'APTOPT1 APTOPT2 APTOPT3 ...']     \\
+         [--aptrepos 'APTREPO1 APTREPO2 APTREPO3 ...']  \\
+         [--include  DEB_GLOB0,DEB_GLOB1 ...]           \\
          EQUIVS_FILE
 
 SYNOPSIS
 
-  $0                                                            \
-    --deps                                                      \
-    --tarballs                                                  \
-    --flavors 'dev board-arm64 cross-board-arm64'               \
-    --release trixie                                            \
-    --aptopts 'Acquire::Check-Date=false'                       \
-    --aptrepos 'https://localserver/debian/frobnicator-trixie/' \
+  $0                                                            \\
+    --deps                                                      \\
+    --tarballs                                                  \\
+    --flavors 'dev board-arm64 cross-board-arm64'               \\
+    --release trixie                                            \\
+    --aptopts 'Acquire::Check-Date=false'                       \\
+    --aptrepos 'https://localserver/debian/frobnicator-trixie/' \\
     frobnicator.equivs
 
   ...
